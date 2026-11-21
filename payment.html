@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>สรุปการสั่งซื้อ</title>
+    <style>
+        body { background-color: #d2b48c; font-family: sans-serif; display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0; }
+        .payment-card { background: white; padding: 40px; border-radius: 25px; text-align: center; border: 3px solid #8b4513; box-shadow: 0 10px 30px rgba(0,0,0,0.2); width: 350px; }
+        .order-info { background: #fdf5e6; padding: 20px; border-radius: 15px; margin-bottom: 25px; border: 2px dashed #8b4513; text-align: left; }
+        .order-item { display: flex; justify-content: space-between; margin: 10px 0; font-size: 18px; }
+        .price-tag { font-size: 32px; font-weight: bold; color: #b52b2b; margin: 20px 0; }
+        .confirm-btn { width: 100%; background-color: #28a745; color: white; padding: 15px; border: none; border-radius: 10px; font-size: 18px; font-weight: bold; cursor: pointer; display: block; transition: 0.2s; }
+        .confirm-btn:disabled { background-color: #999; cursor: not-allowed; }
+        .qr-section img { width: 220px; height: 220px; object-fit: contain; }
+        .camera-section { margin: 18px 0 6px; }
+        .camera-hint { font-size: 13px; color: #8b4513; margin: 0 0 8px; }
+        #slipVideo {
+            width: 100%; max-width: 260px; aspect-ratio: 1 / 1; object-fit: cover;
+            border: 3px solid #8b4513; border-radius: 15px; background: #222;
+        }
+        .scan-live { color: #28a745; }
+        #verifyStatus { margin: 10px 0; font-size: 14px; font-weight: bold; min-height: 18px; }
+        #verifyStatus.ok  { color: #28a745; }
+        #verifyStatus.err { color: #b52b2b; }
+        #verifyStatus.pending { color: #8b4513; }
+        #voice-indicator { position: fixed; top: 0; left: 0; width: 100%; background: rgba(255,255,255,0.92); text-align: center; padding: 6px; font-size: 14px; color: #8b4513; font-weight: bold; display: none; z-index: 999; box-shadow: 0 2px 6px rgba(0,0,0,0.1); }
+    </style>
+    <script src="jsqr.js"></script>
+</head>
+<body>
+<div id="voice-indicator"></div>
+<div class="payment-card" id="mainCard">
+    <h2 id="title">สรุปการสั่งซื้อ</h2>
+    <div class="order-info">
+        <div class="order-item"><span>เมนู:</span> <span id="displayMenu">-</span></div>
+        <div class="order-item"><span>ความหวาน:</span> <span id="displaySweetness">-</span></div>
+    </div>
+    <div class="price-tag" id="priceTag">฿ 45.00</div>
+    <div class="qr-section"><img id="qrCode" src="" alt="QR Code"></div>
+
+    <div class="camera-section">
+        <p class="camera-hint" id="cameraHint">📷 หลังโอนเงินแล้ว นำสลิปมาส่องกล้องเพื่อตรวจสอบอัตโนมัติ</p>
+        <video id="slipVideo" autoplay playsinline muted></video>
+        <canvas id="slipCanvas" style="display:none;"></canvas>
+    </div>
+
+    <div id="verifyStatus"></div>
+    <input type="file" id="slipInput" accept="image/*" capture="environment" style="display:none;">
+    <button class="confirm-btn" id="payBtn" onclick="triggerSlipUpload()">แนบรูปสลิปแทน</button>
+    <a href="#" onclick="cancelOrder()" style="display:block; margin-top:15px; color:#8b4513; text-decoration:none;">← กลับหน้าหลัก</a>
+</div>
+
+<script>
+// ─── TTS (Feature 2) ──────────────────────────────────────────────────────────
+let isSpeaking = false;
+let recognitionRef = null;
+
+function aiSpeak(msg) {
+    if (!window.speechSynthesis) return;
+    window.speechSynthesis.cancel();
+
+    // ไม่ abort() ไมค์ — ปล่อยให้ recognition ฟังต่อเนื่อง (ไม่ต้อง restart ให้หน่วง)
+    // แค่กรองผลลัพธ์ทิ้งระหว่างพูดด้วย isSpeaking เพื่อกันเสียงจากลำโพงวิ่งกลับเข้าไมค์ (echo)
+    isSpeaking = true;
+
+    const u = new SpeechSynthesisUtterance(msg);
+    u.lang = 'th-TH'; u.rate = 1.0; u.volume = 1;
+    u.onend = () => {
+        // รอสั้นๆ ให้ echo หางเสียงสลายก่อน ค่อยเริ่มรับฟังคำตอบจริง
+        setTimeout(() => { isSpeaking = false; }, 200);
+    };
+    window.speechSynthesis.speak(u);
+}
+
+// ─── On Load ──────────────────────────────────────────────────────────────────
+let currentOrderId = null;
+
+window.onload = async function () {
+    const menu      = localStorage.getItem('selectedMenu')      || 'ไม่ได้เลือก';
+    const sweetness = localStorage.getItem('selectedSweetness') || '-';
+
+    document.getElementById('displayMenu').innerText      = menu;
+    document.getElementById('displaySweetness').innerText = sweetness;
+
+    const card = document.getElementById('mainCard');
+    if (menu === 'Blue Syrup')  card.style.borderColor = '#007bff';
+    if (menu === 'Red Syrup')   card.style.borderColor = '#b52b2b';
+    if (menu === 'Green Syrup') card.style.borderColor = '#28a745';
+
+    // สร้างออเดอร์แบบ pending_payment ก่อน แล้วค่อยขอ QR PromptPay จริงตามยอดของออเดอร์นี้
+    try {
+        const res = await fetch('/api/save-order', {
+            method:  'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body:    JSON.stringify({ menu, sweetness, timestamp: new Date().toLocaleString('th-TH') }),
+        });
+        const result = await res.json();
+        if (result.status !== 'success') throw new Error('create order failed');
+
+        currentOrderId = result.id;
+        document.getElementById('priceTag').textContent = `฿ ${Number(result.price).toFixed(2)}`;
+        document.getElementById('qrCode').src = `/api/qr/${currentOrderId}`;
+        startCameraScan();
+    } catch (err) {
+        console.error('สร้างออเดอร์ไม่สำเร็จ:', err);
+        showStatus('err', 'ไม่สามารถสร้างออเดอร์ได้ กรุณาลองใหม่');
+    }
+
+    // Feature 2: TTS อ่านสรุปออเดอร์
+    setTimeout(() => {
+        aiSpeak(`สรุปออเดอร์ ${menu} ${sweetness} ราคาสี่สิบห้าบาท กรุณาสแกนจ่ายแล้วแนบสลิปโอนเงิน`);
+    }, 600);
+};
+
+// ─── Cancel ───────────────────────────────────────────────────────────────────
+function cancelOrder() {
+    aiSpeak('ยกเลิกออเดอร์แล้วครับ');
+    stopCameraScan();
+    const requests = [fetch('/api/reset', { method: 'POST' })];
+    if (currentOrderId) requests.push(fetch(`/api/orders/${currentOrderId}/cancel`, { method: 'POST' }));
+    Promise.allSettled(requests).finally(() => {
+        setTimeout(() => { window.location.href = 'index.html'; }, 1500); // เผื่อเวลาให้พูดจบก่อนเปลี่ยนหน้า
+    });
+}
+
+function showStatus(kind, msg) {
+    const el = document.getElementById('verifyStatus');
+    el.className = kind;
+    el.textContent = msg;
+}
+
+// ─── Webcam slip-QR scanning ─────────────────────────────────────────────────
+let cameraStream = null;
+let scanning     = false;
+
+async function startCameraScan() {
+    if (!window.jsQR) return;  // jsqr.js failed to load — fall back to manual upload only
+    const video = document.getElementById('slipVideo');
+    try {
+        cameraStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+        video.srcObject = cameraStream;
+        await video.play();
+        scanning = true;
+        document.getElementById('cameraHint').className   = 'camera-hint scan-live';
+        document.getElementById('cameraHint').textContent  = '🟢 กล้องพร้อม — กำลังรอสแกน QR Code จากสลิป...';
+        requestAnimationFrame(scanFrame);
+    } catch (err) {
+        console.error('เปิดกล้องไม่สำเร็จ:', err);
+        document.getElementById('cameraHint').textContent =
+            '⚠️ เปิดกล้องไม่ได้ (ต้องเป็น HTTPS หรือ localhost) — กรุณาใช้ปุ่มแนบรูปสลิปแทน';
+    }
+}
+
+function stopCameraScan() {
+    scanning = false;
+    if (cameraStream) {
+        cameraStream.getTracks().forEach(t => t.stop());
+        cameraStream = null;
+    }
+}
+
+function scanFrame() {
+    if (!scanning) return;
+    const video  = document.getElementById('slipVideo');
+    const canvas = document.getElementById('slipCanvas');
+
+    if (video.videoWidth === 0) {
+        requestAnimationFrame(scanFrame);
+        return;
+    }
+
+    canvas.width  = video.videoWidth;
+    canvas.height = video.videoHeight;
+    const ctx = canvas.getContext('2d');
+    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    const qr = jsQR(imageData.data, imageData.width, imageData.height);
+
+    if (qr && qr.data) {
+        scanning = false;
+        document.getElementById('cameraHint').textContent = '✅ พบ QR Code บนสลิปแล้ว กำลังตรวจสอบ...';
+        submitVerification({ data: qr.data });
+        return;
+    }
+    requestAnimationFrame(scanFrame);
+}
+
+// ─── Attach + verify slip — Feature 8: ป้องกัน double-tap ───────────────────
+function triggerSlipUpload() {
+    if (!currentOrderId) {
+        showStatus('err', 'ยังไม่พร้อม กรุณารอสักครู่แล้วลองใหม่');
+        return;
+    }
+    document.getElementById('slipInput').click();
+}
+
+document.getElementById('slipInput').addEventListener('change', (e) => {
+    const file = e.target.files[0];
+    if (file) {
+        stopCameraScan();
+        submitVerification({ file });
+    }
+});
+
+async function submitVerification({ file, data }) {
+    const btn = document.getElementById('payBtn');
+    if (btn.disabled) return;
+    btn.disabled = true;
+    btn.textContent = '⏳ กำลังตรวจสอบสลิป...';
+    showStatus('pending', '⏳ กำลังตรวจสอบสลิปกับ SlipOK...');
+
+    const form = new FormData();
+    form.append('order_id', currentOrderId);
+    if (file) form.append('file', file);
+    if (data) form.append('data', data);
+
+    try {
+        const res    = await fetch('/api/verify-slip', { method: 'POST', body: form });
+        const result = await res.json();
+        if (result.status === 'success') {
+            stopCameraScan();
+            showStatus('ok', '✅ ตรวจสอบสลิปสำเร็จ');
+            window.location.href = 'thankyou.html';
+        } else {
+            throw new Error(result.message || 'ตรวจสอบสลิปไม่ผ่าน');
+        }
+    } catch (err) {
+        console.error('ตรวจสอบสลิปไม่สำเร็จ:', err);
+        showStatus('err', '❌ ' + err.message);
+        btn.disabled    = false;
+        btn.textContent = 'แนบรูปสลิปแทน';
+        document.getElementById('slipInput').value = '';
+        if (!cameraStream) startCameraScan(); else { scanning = true; requestAnimationFrame(scanFrame); }
+    }
+}
+
+// ─── AI Voice Assistant ───────────────────────────────────────────────────────
+const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+if (SpeechRecognition) {
+    const recognition = new SpeechRecognition();
+    recognitionRef = recognition; // ให้ aiSpeak() เข้าถึงได้
+    recognition.lang = 'th-TH';
+    recognition.continuous = true;
+    recognition.interimResults = true;
+    recognition.maxAlternatives = 3;
+
+    const voiceIndicator = document.getElementById('voice-indicator');
+    let lastActed = 0;
+
+    recognition.onstart = () => {
+        voiceIndicator.style.display = 'block';
+        voiceIndicator.innerHTML = '🎙️ AI พร้อมรับคำสั่งเสียงแล้ว...';
+    };
+
+    recognition.onresult = (event) => {
+        if (isSpeaking) return; // ไม่รับเสียงขณะ TTS กำลังพูด (ป้องกัน echo)
+        const now = Date.now();
+        if (now - lastActed < 1500) return;
+
+        let transcript = '';
+        for (let i = event.resultIndex; i < event.results.length; i++)
+            transcript += event.results[i][0].transcript;
+        transcript = transcript.toLowerCase().trim();
+        if (!transcript) return;
+        console.log('AI หน้าจ่ายเงินได้ยิน:', transcript);
+        voiceIndicator.style.display = 'block';
+        voiceIndicator.innerHTML = `🎙️ ได้ยิน: "${transcript}"`;
+
+        // หมายเหตุ: บางเบราว์เซอร์บล็อกการเปิด file picker ที่สั่งจากนอก user gesture โดยตรง
+        if (['จ่าย','ชำระเงิน','ชำระ','ตกลง','โอเค','ok','เสร็จ','เสร็จแล้ว','ยืนยัน','ต่อไป','ไปต่อ','ต่อ','สั่ง','สั่งเลย','จ่ายเลย','ซื้อ','ซื้อเลย','confirm','yes','ใช่','คอนเฟิร์ม','เยส','เพย์','เพย์เมนต์','แนบสลิป','อัพโหลดสลิป'].some(w => transcript.includes(w))) {
+            lastActed = now;
+            voiceIndicator.innerHTML = '✅ กำลังเปิดหน้าต่างแนบสลิป...';
+            triggerSlipUpload();
+        }
+
+        if (['ยกเลิก','cancel','ไม่เอา','ไม่ซื้อ','ไม่จ่าย','กลับ','ย้อนกลับ','เมนู','หน้าแรก','ออก','no','back','แคนเซิล','โน','แบ็ค','โฮม'].some(w => transcript.includes(w))) {
+            lastActed = now;
+            voiceIndicator.innerHTML = '✅ กำลังกลับ...';
+            cancelOrder();
+        }
+    };
+
+    recognition.onerror = (e) => { if (e.error !== 'aborted' && e.error !== 'not-allowed' && !isSpeaking) setTimeout(() => recognition.start(), 300); };
+    recognition.onend = () => { if (!isSpeaking) recognition.start(); };
+    recognition.start();
+}
+</script>
+</body>
+</html>

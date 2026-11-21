@@ -3,14 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Drink Page</title>
+    <title>Green Syrup Page</title>
     <style>
-        body { background-color: #d2b48c; font-family: sans-serif; display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0; }
+        body { background-color: #d2b48c; font-family: sans-serif; display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0; }
         .card { background: white; padding: 30px; border-radius: 20px; text-align: center; border: 3px solid #8b4513; box-shadow: 0 4px 15px rgba(0,0,0,0.2); width: 320px; }
         .sweetness-options { display: flex; flex-direction: column; gap: 10px; margin: 20px 0; }
         .option { padding: 12px; border: 2px solid #ddd; border-radius: 10px; cursor: pointer; transition: 0.2s; font-weight: bold; }
-        .option:hover { background-color: #f4f4f4; }
-        .option.selected { background-color: #f4f4f4; }
+        .option:hover { background-color: #f4fff4; }
+        .option.selected { border-color: #28a745; background-color: #eaffea; color: #28a745; }
         .btn-group { display: flex; flex-direction: column; gap: 10px; }
         .pay-btn { padding: 15px; background-color: #ccc; color: white; text-decoration: none; border-radius: 10px; font-weight: bold; pointer-events: none; transition: 0.3s; border: none; display: block; cursor: pointer; text-align: center; }
         .pay-btn.active { background-color: #28a745; pointer-events: auto; box-shadow: 0 4px 10px rgba(40,167,69,0.3); }
@@ -19,15 +19,14 @@
         .modal-backdrop { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 9999; justify-content: center; align-items: center; }
         .modal-box { background: white; padding: 30px; border-radius: 20px; text-align: center; width: 285px; box-shadow: 0 10px 25px rgba(0,0,0,0.5); }
         .modal-btn { padding: 12px 22px; color: white; border: none; border-radius: 10px; font-weight: bold; cursor: pointer; font-size: 15px; }
-        #notFound { display: none; }
     </style>
 </head>
 <body>
 <div id="voice-indicator"></div>
 
-<div class="card" id="mainCard" style="display:none;">
-    <h1 style="font-size:60px; margin:0;" id="drinkIcon">🥤</h1>
-    <h2 id="drinkName">-</h2>
+<div class="card">
+    <h1 style="font-size:60px; margin:0;">🟢</h1>
+    <h2 style="color:#28a745;">Green Syrup</h2>
     <p>เลือกระดับความหวานเพื่อไปต่อ</p>
     <div class="sweetness-options">
         <div class="option" onclick="selectSweetness(this,'หวานน้อย')">หวานน้อย &nbsp;<small style="color:#aaa;font-weight:normal;">(Less Sweet)</small></div>
@@ -38,12 +37,6 @@
         <a href="#" id="payButton" class="pay-btn" onclick="event.preventDefault(); confirmOrder()">ไปหน้าจ่ายเงิน</a>
         <a href="#" class="back-btn" onclick="cancelOrder()">← กลับสู่หน้าหลัก</a>
     </div>
-</div>
-
-<div class="card" id="notFound">
-    <h2 style="color:#b52b2b;">⚠️ ไม่พบเมนูนี้</h2>
-    <p>เมนูอาจถูกลบหรือเปลี่ยนชื่อไปแล้ว</p>
-    <a href="index.html" class="back-btn">← กลับสู่หน้าหลัก</a>
 </div>
 
 <!-- Modal: ยังไม่เลือกความหวาน -->
@@ -58,8 +51,8 @@
 
 <!-- Modal: ยืนยันออเดอร์ (Feature 6) -->
 <div id="confirmModal" class="modal-backdrop">
-    <div class="modal-box" id="confirmBox" style="border:3px solid #8b4513;">
-        <h3 style="color:#8b4513; margin-top:0;">🛒 ยืนยันออเดอร์?</h3>
+    <div class="modal-box" style="border:3px solid #28a745;">
+        <h3 style="color:#28a745; margin-top:0;">🛒 ยืนยันออเดอร์?</h3>
         <p id="confirmText" style="font-size:18px; font-weight:bold; color:#333; margin:10px 0;"></p>
         <p id="priceDisplay" style="color:#b52b2b; font-size:28px; font-weight:bold; margin:5px 0;">฿ 45.00</p>
         <div style="display:flex; gap:10px; justify-content:center; margin-top:15px;">
@@ -71,11 +64,6 @@
 </div>
 
 <script>
-// ─── Resolve which menu this page is for ─────────────────────────────────────
-const menuName = new URLSearchParams(window.location.search).get('menu') || '';
-let menuEntry  = null;
-let currentPrice = 45;
-
 // ─── TTS (Feature 2) ──────────────────────────────────────────────────────────
 let isSpeaking = false;
 let recognitionRef = null;
@@ -97,47 +85,26 @@ function aiSpeak(msg) {
     window.speechSynthesis.speak(u);
 }
 
-// ─── Load menu data ───────────────────────────────────────────────────────────
+// ─── Price (fetched from admin config) ───────────────────────────────────────
+let currentPrice = 45;
 fetch('/api/menus')
     .then(r => r.json())
     .then(menus => {
-        menuEntry = menus.find(m => m.name === menuName);
-        if (!menuEntry) {
-            document.getElementById('notFound').style.display = 'block';
-            return;
-        }
-
-        currentPrice = menuEntry.price;
-        document.getElementById('mainCard').style.display = 'block';
-        document.getElementById('drinkIcon').textContent = menuEntry.icon || '🥤';
-        document.getElementById('drinkName').textContent = menuEntry.name;
-        document.getElementById('drinkName').style.color = menuEntry.color || '#8b4513';
-        document.getElementById('confirmBox').style.borderColor = menuEntry.color || '#8b4513';
+        const entry = menus.find(m => m.name === 'Green Syrup');
+        currentPrice = entry ? entry.price : 45;
         document.getElementById('priceDisplay').textContent = `฿ ${Number(currentPrice).toFixed(2)}`;
-        document.querySelectorAll('.option').forEach(o => {
-            o.addEventListener('mouseenter', () => {});
-        });
-        const style = document.createElement('style');
-        style.textContent = `.option.selected { border-color: ${menuEntry.color || '#8b4513'} !important; background-color: #f4f4f4; color: ${menuEntry.color || '#8b4513'}; }`;
-        document.head.appendChild(style);
-
-        mqttNotify('/api/select-drink', { menu: menuEntry.name, timestamp: new Date().toLocaleString('th-TH') });
     })
-    .catch(err => {
-        console.error('โหลดเมนูไม่สำเร็จ:', err);
-        document.getElementById('notFound').style.display = 'block';
-    });
+    .catch(err => console.error('โหลดราคาไม่สำเร็จ:', err));
 
 // ─── Order Confirmation (Feature 6) ──────────────────────────────────────────
 let navigating = false;
 
 function confirmOrder() {
-    if (!menuEntry) return;
     const sweet = localStorage.getItem('selectedSweetness');
     if (!sweet) { document.getElementById('voiceAlert').style.display = 'flex'; return; }
-    document.getElementById('confirmText').textContent = menuEntry.name + ' — ' + sweet;
+    document.getElementById('confirmText').textContent = 'Green Syrup — ' + sweet;
     document.getElementById('confirmModal').style.display = 'flex';
-    aiSpeak('คุณเลือก ' + menuEntry.name + ' ' + sweet + ' ราคา ' + currentPrice + ' บาท ยืนยันหรือไม่?');
+    aiSpeak('คุณเลือก กรีน ซีรัป ' + sweet + ' ราคา ' + currentPrice + ' บาท ยืนยันหรือไม่?');
 }
 function closeConfirm() {
     document.getElementById('confirmModal').style.display = 'none';
@@ -163,13 +130,16 @@ function mqttNotify(endpoint, body) {
         .catch(err => console.error(endpoint, err));
 }
 
+window.addEventListener('load', () => {
+    mqttNotify('/api/select-drink', { menu: 'Green Syrup', timestamp: new Date().toLocaleString('th-TH') });
+});
+
 // ─── Sweetness Selection ──────────────────────────────────────────────────────
 function selectSweetness(element, level) {
-    if (!menuEntry) return;
     document.querySelectorAll('.option').forEach(o => o.classList.remove('selected'));
     element.classList.add('selected');
     document.getElementById('payButton').classList.add('active');
-    localStorage.setItem('selectedMenu', menuEntry.name);
+    localStorage.setItem('selectedMenu', 'Green Syrup');
     localStorage.setItem('selectedSweetness', level);
     mqttNotify('/api/select-sweetness', { sweetness: level, timestamp: new Date().toLocaleString('th-TH') });
     aiSpeak('เลือก' + level + 'แล้ว');
