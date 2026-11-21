@@ -1,0 +1,775 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ตั้งค่าระบบ</title>
+    <style>
+        * { box-sizing: border-box; }
+
+        body {
+            background-color: #d2b48c;
+            margin: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            padding-bottom: 40px;
+        }
+
+        .header {
+            width: 100%;
+            background-color: #8b4513;
+            color: white;
+            text-align: center;
+            padding: 15px 0;
+            position: fixed;
+            top: 0;
+            left: 0;
+            z-index: 1000;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        .header h1 { margin: 0; font-size: 22px; }
+        .header a {
+            position: absolute; left: 20px; top: 50%;
+            transform: translateY(-50%);
+            color: white; text-decoration: none; font-size: 14px; opacity: 0.85;
+        }
+        .header a:hover { opacity: 1; }
+
+        .page-content {
+            margin-top: 80px;
+            padding: 20px;
+            max-width: 560px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        .card {
+            background: white;
+            border: 3px solid #8b4513;
+            border-radius: 20px;
+            padding: 20px 25px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+
+        .card h2 {
+            color: #8b4513;
+            margin-top: 0;
+            font-size: 17px;
+            border-bottom: 2px solid #d2b48c;
+            padding-bottom: 8px;
+            margin-bottom: 15px;
+        }
+
+        .field-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin: 10px 0;
+        }
+
+        .field-row label {
+            color: #8b4513;
+            font-weight: bold;
+            font-size: 14px;
+            width: 44%;
+        }
+
+        .field-row input {
+            width: 54%;
+            padding: 8px 10px;
+            border: 2px solid #d2b48c;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: border-color 0.2s;
+        }
+
+        .field-row input:focus {
+            border-color: #8b4513;
+            outline: none;
+        }
+
+        .field-row select {
+            width: 54%;
+            padding: 8px 10px;
+            border: 2px solid #d2b48c;
+            border-radius: 8px;
+            font-size: 14px;
+            background: white;
+        }
+
+        #testOrderStatus { margin-top: 10px; font-weight: bold; font-size: 14px; min-height: 18px; }
+
+        .test-btn {
+            margin-top: 12px;
+            background-color: #4a90d9;
+            color: white;
+            border: none;
+            padding: 10px 22px;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        .test-btn:hover { background-color: #3578c0; }
+
+        #testResult {
+            margin-top: 10px;
+            font-weight: bold;
+            font-size: 14px;
+            min-height: 20px;
+        }
+
+        .footer-btns {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .btn-save {
+            background-color: #8b4513;
+            color: white;
+            border: none;
+            padding: 13px 28px;
+            border-radius: 50px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: background-color 0.2s, transform 0.2s;
+        }
+        .btn-save:hover { background-color: #6b3410; transform: translateY(-2px); }
+
+        .btn-back {
+            background-color: #777;
+            color: white;
+            border: none;
+            padding: 13px 28px;
+            border-radius: 50px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-block;
+            transition: background-color 0.2s;
+        }
+        .btn-back:hover { background-color: #555; }
+
+        #saveResult {
+            margin-top: 12px;
+            font-weight: bold;
+            font-size: 15px;
+            min-height: 22px;
+        }
+
+        .ok  { color: #28a745; }
+        .err { color: #b52b2b; }
+
+        .menu-row { border: 2px solid #eee; border-radius: 12px; padding: 12px; margin-bottom: 10px; }
+        .menu-row-head { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+        .menu-row-head .icon { font-size: 22px; }
+        .menu-row-head .name { font-weight: bold; }
+        .menu-row-head .locked-badge { margin-left: auto; font-size: 11px; color: #999; }
+        .menu-row-keywords-label { font-size: 12px; color: #888; margin: 8px 0 4px; }
+        .menu-row-keywords { display: flex; flex-wrap: wrap; gap: 5px; min-height: 22px; }
+        .keyword-chip-static {
+            background: #f4e4c1; color: #8b4513; padding: 2px 9px; border-radius: 12px; font-size: 12px;
+        }
+        .menu-row-actions { display: flex; gap: 8px; margin-top: 10px; }
+        .menu-row-actions button { font-size: 13px; padding: 8px 14px; }
+        .row-del-btn { background-color: #b52b2b; }
+        .row-del-btn:hover { background-color: #8f2020; }
+        .row-del-btn:disabled { background-color: #ccc; cursor: not-allowed; }
+        #menuSaveStatus { margin-top: 10px; font-weight: bold; font-size: 14px; min-height: 18px; }
+
+        .popup-backdrop {
+            display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.6); z-index: 3000; justify-content: center; align-items: center;
+        }
+        .popup-content {
+            background: white; padding: 25px; border-radius: 20px; width: 320px;
+            max-height: 85vh; overflow-y: auto;
+        }
+        .popup-content h3 { color: #8b4513; margin-top: 0; }
+        .popup-content .field-row input { width: 54%; }
+
+        .keyword-chips { display: flex; flex-wrap: wrap; gap: 6px; min-height: 26px; margin-bottom: 8px; }
+        .keyword-chip {
+            background: #f4e4c1; color: #8b4513; padding: 4px 10px; border-radius: 14px;
+            font-size: 13px; display: inline-flex; align-items: center; gap: 6px;
+        }
+        .keyword-chip .x { cursor: pointer; font-weight: bold; }
+        .keyword-hint { font-size: 12px; color: #b52b2b; margin-top: 6px; min-height: 16px; }
+        .manual-keyword-row { display: flex; gap: 8px; margin-top: 8px; }
+        .manual-keyword-row input {
+            flex: 1; padding: 8px 10px; border: 2px solid #d2b48c; border-radius: 8px; font-size: 14px;
+        }
+        .popup-actions { display: flex; gap: 10px; justify-content: center; margin-top: 18px; }
+    </style>
+</head>
+<body>
+
+    <div class="header" style="position:relative;">
+        <a href="index.html">← Back</a>
+        <h1>⚙️ ตั้งค่าระบบ</h1>
+    </div>
+
+    <div class="page-content">
+
+        <!-- Section 1: Broker -->
+        <div class="card">
+            <h2>การเชื่อมต่อ MQTT</h2>
+
+            <div class="field-row">
+                <label for="broker">ที่อยู่ Broker</label>
+                <input type="text" id="broker" placeholder="broker.hivemq.com">
+            </div>
+            <div class="field-row">
+                <label for="port">พอร์ต</label>
+                <input type="number" id="port" placeholder="1883" min="1" max="65535">
+            </div>
+            <div class="field-row">
+                <label for="username">Username</label>
+                <input type="text" id="username" placeholder="(ถ้ามี)">
+            </div>
+            <div class="field-row">
+                <label for="password">Password</label>
+                <input type="password" id="password" placeholder="(ถ้ามี)">
+            </div>
+
+            <button class="test-btn" onclick="testConnection()">🔌 ทดสอบการเชื่อมต่อ</button>
+            <div id="testResult"></div>
+        </div>
+
+        <!-- Section 2: Topics -->
+        <div class="card">
+            <h2>หัวข้อ MQTT (Topics)</h2>
+
+            <div class="field-row">
+                <label for="topic_order">บันทึกออเดอร์</label>
+                <input type="text" id="topic_order">
+            </div>
+            <div class="field-row">
+                <label for="topic_machine">สั่งจ่ายเครื่อง</label>
+                <input type="text" id="topic_machine">
+            </div>
+            <div class="field-row">
+                <label for="topic_drink">เครื่องดื่มที่เลือก</label>
+                <input type="text" id="topic_drink">
+            </div>
+            <div class="field-row">
+                <label for="topic_sweetness">ความหวานที่เลือก</label>
+                <input type="text" id="topic_sweetness">
+            </div>
+        </div>
+
+        <!-- Section 3: Sweetness % -->
+        <div class="card">
+            <h2>ระดับความหวาน (%)</h2>
+
+            <div class="field-row">
+                <label for="sweet_low">หวานน้อย</label>
+                <input type="number" id="sweet_low" min="0" max="999">
+            </div>
+            <div class="field-row">
+                <label for="sweet_mid">หวานปกติ</label>
+                <input type="number" id="sweet_mid" min="0" max="999">
+            </div>
+            <div class="field-row">
+                <label for="sweet_high">หวานมาก</label>
+                <input type="number" id="sweet_high" min="0" max="999">
+            </div>
+        </div>
+
+        <!-- Section 4: Menu management -->
+        <div class="card">
+            <h2>จัดการเมนู</h2>
+            <div id="menuRows"></div>
+            <button class="test-btn" onclick="openMenuPopup()">+ เพิ่มเมนูใหม่</button>
+            <div id="menuSaveStatus"></div>
+        </div>
+
+        <!-- Section 5: Test order -->
+        <div class="card">
+            <h2>🧪 ทดลองสั่ง (สำหรับทดสอบ)</h2>
+            <p style="font-size:13px; color:#999; margin-top:-8px;">
+                สั่งจริงทันทีโดยข้ามขั้นตอนชำระเงิน เพื่อทดสอบว่าปั๊ม/MQTT ทำงานถูกต้อง
+            </p>
+
+            <div class="field-row">
+                <label for="test_menu">เมนู</label>
+                <select id="test_menu"></select>
+            </div>
+            <div class="field-row">
+                <label for="test_sweetness">ความหวาน</label>
+                <select id="test_sweetness">
+                    <option value="หวานน้อย">หวานน้อย</option>
+                    <option value="หวานปกติ" selected>หวานปกติ</option>
+                    <option value="หวานมาก">หวานมาก</option>
+                </select>
+            </div>
+
+            <button class="test-btn" onclick="testOrder()">🧪 ทดลองสั่ง</button>
+            <div id="testOrderStatus"></div>
+        </div>
+
+        <!-- Section 6: Payment -->
+        <div class="card">
+            <h2>การชำระเงิน (PromptPay + SlipOK)</h2>
+
+            <div class="field-row">
+                <label for="promptpay_id">PromptPay ID</label>
+                <input type="text" id="promptpay_id" placeholder="เบอร์โทร / เลขบัตร ปชช.">
+            </div>
+            <div class="field-row">
+                <label for="slipok_branch_id">SlipOK Branch ID</label>
+                <input type="text" id="slipok_branch_id" placeholder="Branch ID">
+            </div>
+            <div class="field-row">
+                <label for="slipok_api_key">SlipOK API Key</label>
+                <input type="password" id="slipok_api_key" placeholder="API Key">
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <div class="footer-btns">
+            <button class="btn-save" onclick="saveConfig()">💾 บันทึกการตั้งค่า</button>
+            <a href="index.html" class="btn-back">← กลับหน้าหลัก</a>
+        </div>
+        <div id="saveResult"></div>
+
+    </div>
+
+    <!-- Popup: เพิ่ม/แก้ไขเมนู -->
+    <div class="popup-backdrop" id="menuPopup">
+        <div class="popup-content">
+            <h3 id="menuPopupTitle">เพิ่มเมนูใหม่</h3>
+
+            <div class="field-row">
+                <label for="mp_name">ชื่อเมนู</label>
+                <input type="text" id="mp_name" placeholder="เช่น Yellow Syrup">
+            </div>
+            <div class="field-row">
+                <label for="mp_icon">ไอคอน (emoji)</label>
+                <input type="text" id="mp_icon" placeholder="🟡" maxlength="4">
+            </div>
+            <div class="field-row">
+                <label for="mp_color">สี</label>
+                <input type="color" id="mp_color" value="#f1c40f">
+            </div>
+            <div class="field-row">
+                <label for="mp_pump">ช่องปั๊ม</label>
+                <input type="number" id="mp_pump" min="0" max="99">
+            </div>
+            <div class="field-row">
+                <label for="mp_price">ราคา (บาท)</label>
+                <input type="number" id="mp_price" min="0" step="0.01">
+            </div>
+
+            <div style="margin-top: 15px; text-align: left;">
+                <p style="color:#8b4513; font-weight:bold; font-size:14px; margin-bottom:2px;">
+                    🎙️ คีย์เวิร์ดสั่งด้วยเสียง (อย่างน้อย 3 คำ)
+                </p>
+                <p style="font-size:12px; color:#999; margin:0 0 6px;">
+                    ทั้งหมด <span id="mp_keywordCount">0</span>/20 คำ (นับรวมคีย์เวิร์ดเดิมด้วย)
+                </p>
+                <div class="keyword-chips" id="mp_keywordChips"></div>
+                <button type="button" class="test-btn" id="mp_recordBtn" onclick="recordKeyword()" style="width:100%;">
+                    🎙️ อัดเสียงคีย์เวิร์ดเพิ่ม
+                </button>
+                <div class="manual-keyword-row">
+                    <input type="text" id="mp_manualKeyword" placeholder="หรือพิมพ์คีย์เวิร์ดเอง (คั่นด้วย ,)">
+                    <button type="button" class="test-btn" id="mp_addBtn" onclick="addManualKeyword()">+ เพิ่ม</button>
+                </div>
+                <p class="keyword-hint" id="mp_keywordHint"></p>
+            </div>
+
+            <div class="popup-actions">
+                <button class="btn-save" onclick="saveMenuPopup()">💾 บันทึกเมนูนี้</button>
+                <button class="btn-back" onclick="closeMenuPopup()">ยกเลิก</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const MIN_KEYWORDS = 3;   // ต้องมีอย่างน้อยเท่านี้ถึงจะบันทึกเมนูได้
+        const MAX_KEYWORDS = 20;  // เพดานรวม (นับของเดิม + ที่เพิ่มใหม่ทั้งหมด)
+
+        let menus        = [];   // full menu list (loaded from server, edited in-memory, persisted on "บันทึกการตั้งค่า")
+        let editingIndex = null; // null = adding a new menu, otherwise index into `menus` being edited
+        let mpKeywords   = [];   // in-progress keyword list while the popup is open
+        let keywordRecognition = null;
+
+        // Populate fields from server on load
+        document.addEventListener('DOMContentLoaded', () => {
+            fetch('/api/config')
+                .then(r => r.json())
+                .then(cfg => {
+                    document.getElementById('broker').value       = cfg.mqtt.broker;
+                    document.getElementById('port').value         = cfg.mqtt.port;
+                    document.getElementById('username').value     = cfg.mqtt.username || '';
+                    document.getElementById('password').value     = cfg.mqtt.password || '';
+                    document.getElementById('topic_order').value    = cfg.topics.order;
+                    document.getElementById('topic_machine').value  = cfg.topics.machine;
+                    document.getElementById('topic_drink').value    = cfg.topics.drink;
+                    document.getElementById('topic_sweetness').value = cfg.topics.sweetness;
+                    document.getElementById('sweet_low').value   = cfg.sweetness_map['หวานน้อย'];
+                    document.getElementById('sweet_mid').value   = cfg.sweetness_map['หวานปกติ'];
+                    document.getElementById('sweet_high').value  = cfg.sweetness_map['หวานมาก'];
+                    menus = cfg.menus || [];
+                    renderMenuRows();
+                    const payment = cfg.payment || {};
+                    document.getElementById('promptpay_id').value     = payment.promptpay_id || '';
+                    document.getElementById('slipok_branch_id').value = payment.slipok_branch_id || '';
+                    document.getElementById('slipok_api_key').value   = payment.slipok_api_key || '';
+                })
+                .catch(err => console.error('Load config failed:', err));
+        });
+
+        // ─── Menu management ─────────────────────────────────────────────────
+        function renderMenuRows() {
+            populateTestMenuSelect();
+            const wrap = document.getElementById('menuRows');
+            if (menus.length === 0) {
+                wrap.innerHTML = '<p style="color:#999; font-size:14px;">ยังไม่มีเมนู — กด "+ เพิ่มเมนูใหม่" ด้านล่าง</p>';
+                return;
+            }
+            wrap.innerHTML = menus.map((m, i) => `
+                <div class="menu-row">
+                    <div class="menu-row-head">
+                        <span class="icon">${m.icon}</span>
+                        <span class="name" style="color:${m.color};">${m.name}</span>
+                        ${m.locked ? '<span class="locked-badge">🔒 เมนูหลัก</span>' : ''}
+                    </div>
+                    <div class="field-row">
+                        <label>ช่องปั๊ม</label>
+                        <input type="number" min="0" max="99" value="${m.pump_channel}"
+                               onchange="menus[${i}].pump_channel = parseInt(this.value) || 0; persistMenus('อัปเดตช่องปั๊มแล้ว')">
+                    </div>
+                    <div class="field-row">
+                        <label>ราคา (บาท)</label>
+                        <input type="number" min="0" step="0.01" value="${m.price}"
+                               onchange="menus[${i}].price = parseFloat(this.value) || 0; persistMenus('อัปเดตราคาแล้ว')">
+                    </div>
+                    <p class="menu-row-keywords-label">คีย์เวิร์ดทั้งหมด (${(m.keywords || []).length}):</p>
+                    <div class="menu-row-keywords">
+                        ${(m.keywords && m.keywords.length)
+                            ? m.keywords.map(k => `<span class="keyword-chip-static">${k}</span>`).join('')
+                            : '<span style="color:#aaa; font-size:12px;">(ไม่มี)</span>'}
+                    </div>
+                    <div class="menu-row-actions">
+                        <button class="test-btn" onclick="openMenuPopup(${i})">✏️ แก้ไข / คีย์เวิร์ด</button>
+                        <button class="test-btn row-del-btn" onclick="deleteMenuRow(${i})" ${m.locked ? 'disabled title="เมนูหลักลบไม่ได้"' : ''}>🗑️ ลบ</button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function openMenuPopup(index) {
+            editingIndex = (typeof index === 'number') ? index : null;
+            const m = editingIndex !== null
+                ? menus[editingIndex]
+                : { name: '', icon: '🥤', color: '#8b4513', pump_channel: 0, price: 45, keywords: [] };
+
+            document.getElementById('menuPopupTitle').textContent = editingIndex !== null ? 'แก้ไขเมนู' : 'เพิ่มเมนูใหม่';
+            const nameInput = document.getElementById('mp_name');
+            nameInput.value    = m.name;
+            nameInput.disabled = editingIndex !== null && !!m.locked; // ห้ามเปลี่ยนชื่อเมนูหลัก จะทำให้ผูกราคา/ปั๊มผิดเมนู
+            document.getElementById('mp_icon').value  = m.icon;
+            document.getElementById('mp_color').value = m.color;
+            document.getElementById('mp_pump').value  = m.pump_channel;
+            document.getElementById('mp_price').value = m.price;
+
+            mpKeywords = [...(m.keywords || [])];
+            document.getElementById('mp_keywordHint').textContent = '';
+            document.getElementById('mp_manualKeyword').value     = '';
+            renderKeywordChips();
+
+            document.getElementById('menuPopup').style.display = 'flex';
+        }
+
+        function closeMenuPopup() {
+            document.getElementById('menuPopup').style.display = 'none';
+            if (keywordRecognition) { try { keywordRecognition.abort(); } catch (e) {} keywordRecognition = null; }
+        }
+
+        function renderKeywordChips() {
+            const wrap = document.getElementById('mp_keywordChips');
+            wrap.innerHTML = mpKeywords.length
+                ? mpKeywords.map((k, i) => `
+                    <span class="keyword-chip">${k} <span class="x" onclick="removeKeyword(${i})">×</span></span>
+                  `).join('')
+                : '<span style="color:#aaa; font-size:13px;">ยังไม่มีคีย์เวิร์ด</span>';
+
+            document.getElementById('mp_keywordCount').textContent = mpKeywords.length;
+
+            const atCap = mpKeywords.length >= MAX_KEYWORDS;
+            document.getElementById('mp_recordBtn').disabled = atCap;
+            document.getElementById('mp_addBtn').disabled     = atCap;
+            document.getElementById('mp_manualKeyword').disabled = atCap;
+        }
+
+        function removeKeyword(i) {
+            mpKeywords.splice(i, 1);
+            renderKeywordChips();
+        }
+
+        function addManualKeyword() {
+            const input = document.getElementById('mp_manualKeyword');
+            if (mpKeywords.length >= MAX_KEYWORDS) {
+                document.getElementById('mp_keywordHint').textContent =
+                    `⚠️ คีย์เวิร์ดครบ ${MAX_KEYWORDS} คำแล้ว (รวมของเดิม) กรุณาลบบางคำก่อนเพิ่มใหม่`;
+                return;
+            }
+            const newWords = input.value.split(',').map(s => s.trim().toLowerCase()).filter(Boolean);
+            for (const k of newWords) {
+                if (mpKeywords.length >= MAX_KEYWORDS) break;
+                if (!mpKeywords.includes(k)) mpKeywords.push(k);
+            }
+            input.value = '';
+            renderKeywordChips();
+            if (mpKeywords.length >= MAX_KEYWORDS) {
+                document.getElementById('mp_keywordHint').textContent =
+                    `⚠️ คีย์เวิร์ดครบ ${MAX_KEYWORDS} คำแล้ว (รวมของเดิม)`;
+            }
+        }
+
+        function recordKeyword() {
+            if (mpKeywords.length >= MAX_KEYWORDS) {
+                document.getElementById('mp_keywordHint').textContent =
+                    `⚠️ คีย์เวิร์ดครบ ${MAX_KEYWORDS} คำแล้ว (รวมของเดิม) กรุณาลบบางคำก่อนอัดเพิ่ม`;
+                return;
+            }
+            const SpeechRecognitionCtor = window.SpeechRecognition || window.webkitSpeechRecognition;
+            if (!SpeechRecognitionCtor) {
+                document.getElementById('mp_keywordHint').textContent =
+                    '⚠️ เบราว์เซอร์นี้ไม่รองรับการรับเสียง กรุณาพิมพ์คีย์เวิร์ดเอง';
+                return;
+            }
+            const btn = document.getElementById('mp_recordBtn');
+            btn.disabled    = true;
+            btn.textContent = '🎙️ กำลังฟัง... พูดคำที่ใช้เรียกเมนูนี้';
+
+            keywordRecognition = new SpeechRecognitionCtor();
+            keywordRecognition.lang            = 'th-TH';
+            keywordRecognition.continuous      = false;
+            keywordRecognition.interimResults  = false;
+            keywordRecognition.maxAlternatives = 1;
+
+            keywordRecognition.onresult = (event) => {
+                const word = event.results[0][0].transcript.toLowerCase().trim();
+                if (word && mpKeywords.length < MAX_KEYWORDS && !mpKeywords.includes(word)) mpKeywords.push(word);
+                renderKeywordChips();
+                document.getElementById('mp_keywordHint').textContent = mpKeywords.length < MIN_KEYWORDS
+                    ? `รับทราบ: "${word}" — แนะนำอัดต่ออีก ${MIN_KEYWORDS - mpKeywords.length} คำ`
+                    : mpKeywords.length >= MAX_KEYWORDS
+                        ? `รับทราบ: "${word}" — ครบ ${MAX_KEYWORDS} คำแล้ว (สูงสุด)`
+                        : `รับทราบ: "${word}" — ครบตามคำแนะนำแล้ว (อัดเพิ่มได้ถึง ${MAX_KEYWORDS} คำ)`;
+            };
+            keywordRecognition.onerror = () => {
+                document.getElementById('mp_keywordHint').textContent = '⚠️ ฟังไม่ชัด ลองพูดใหม่อีกครั้ง';
+            };
+            keywordRecognition.onend = () => {
+                btn.disabled    = mpKeywords.length >= MAX_KEYWORDS;
+                btn.textContent = '🎙️ อัดเสียงคีย์เวิร์ดเพิ่ม';
+            };
+            keywordRecognition.start();
+        }
+
+        function saveMenuPopup() {
+            const name  = document.getElementById('mp_name').value.trim();
+            const icon  = document.getElementById('mp_icon').value.trim() || '🥤';
+            const color = document.getElementById('mp_color').value;
+            const pump  = parseInt(document.getElementById('mp_pump').value);
+            const price = parseFloat(document.getElementById('mp_price').value);
+
+            if (!name)  { alert('กรุณาใส่ชื่อเมนู'); return; }
+            if (Number.isNaN(pump) || Number.isNaN(price)) { alert('กรุณาใส่ช่องปั๊มและราคาให้ถูกต้อง'); return; }
+            if (menus.some((m, i) => m.name === name && i !== editingIndex)) { alert('มีเมนูชื่อนี้อยู่แล้ว'); return; }
+            if (mpKeywords.length < MIN_KEYWORDS) {
+                document.getElementById('mp_keywordHint').textContent =
+                    `⚠️ ต้องมีคีย์เวิร์ดอย่างน้อย ${MIN_KEYWORDS} คำ (ตอนนี้มี ${mpKeywords.length}) — อัดเสียงเพิ่มหรือพิมพ์เอง`;
+                return;
+            }
+
+            const menuObj = {
+                name, icon, color,
+                pump_channel: pump,
+                price,
+                keywords: mpKeywords,
+                locked: editingIndex !== null ? !!menus[editingIndex].locked : false,
+            };
+
+            const wasEditing = editingIndex !== null;
+            if (wasEditing) menus[editingIndex] = menuObj;
+            else menus.push(menuObj);
+
+            closeMenuPopup();
+            renderMenuRows();
+            persistMenus(wasEditing ? 'แก้ไขเมนูสำเร็จ' : `เพิ่มเมนู "${name}" สำเร็จ`);
+        }
+
+        function deleteMenuRow(i) {
+            if (menus[i].locked) return;
+            if (!confirm(`ลบเมนู "${menus[i].name}" ใช่ไหม?`)) return;
+            menus.splice(i, 1);
+            renderMenuRows();
+            persistMenus('ลบเมนูแล้ว');
+        }
+
+        // ─── Test order ──────────────────────────────────────────────────────
+        function populateTestMenuSelect() {
+            const select = document.getElementById('test_menu');
+            const prevValue = select.value;
+            select.innerHTML = menus.map(m => `<option value="${m.name}">${m.icon} ${m.name}</option>`).join('');
+            if (menus.some(m => m.name === prevValue)) select.value = prevValue;
+        }
+
+        function testOrder() {
+            const menuName  = document.getElementById('test_menu').value;
+            const sweetness = document.getElementById('test_sweetness').value;
+            const status    = document.getElementById('testOrderStatus');
+
+            if (!menuName) { alert('ยังไม่มีเมนูให้ทดสอบ — เพิ่มเมนูก่อน'); return; }
+
+            status.className = '';
+            status.textContent = '⏳ กำลังสั่ง...';
+
+            fetch('/api/test-order', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ menu: menuName, sweetness }),
+            })
+                .then(r => r.json())
+                .then(data => {
+                    if (data.status === 'success') {
+                        status.className = 'ok';
+                        status.textContent = data.queue_size > 1
+                            ? `✅ สั่งทดลอง "${menuName}" แล้ว — อยู่ในคิว (${data.queue_size} รายการ, รอประมาณ ${data.wait_seconds} วินาที)`
+                            : `✅ สั่งทดลอง "${menuName}" แล้ว — เครื่องกำลังจ่าย`;
+                    } else {
+                        status.className = 'err';
+                        status.textContent = '❌ ' + data.message;
+                    }
+                })
+                .catch(err => {
+                    status.className = 'err';
+                    status.textContent = '❌ สั่งไม่สำเร็จ: ' + err;
+                });
+        }
+
+        function testConnection() {
+            const broker   = document.getElementById('broker').value.trim();
+            const port     = parseInt(document.getElementById('port').value);
+            const username = document.getElementById('username').value.trim();
+            const password = document.getElementById('password').value;
+            const result   = document.getElementById('testResult');
+            result.className = '';
+            result.textContent = '⏳ กำลังทดสอบ...';
+
+            fetch('/api/config/test', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ broker, port, username, password }),
+            })
+                .then(r => r.json())
+                .then(data => {
+                    if (data.status === 'ok') {
+                        result.className = 'ok';
+                        result.textContent = '✅ ' + data.message;
+                    } else {
+                        result.className = 'err';
+                        result.textContent = '❌ ' + data.message;
+                    }
+                })
+                .catch(err => {
+                    result.className = 'err';
+                    result.textContent = '❌ ไม่สามารถเชื่อมต่อได้: ' + err;
+                });
+        }
+
+        // ใช้ทั้งปุ่ม "บันทึกการตั้งค่า" หลัก และการบันทึกเมนูแบบทันที (persistMenus)
+        function buildConfigPayload() {
+            return {
+                mqtt: {
+                    broker:   document.getElementById('broker').value.trim(),
+                    port:     parseInt(document.getElementById('port').value),
+                    username: document.getElementById('username').value.trim(),
+                    password: document.getElementById('password').value,
+                },
+                topics: {
+                    order:     document.getElementById('topic_order').value.trim(),
+                    machine:   document.getElementById('topic_machine').value.trim(),
+                    drink:     document.getElementById('topic_drink').value.trim(),
+                    sweetness: document.getElementById('topic_sweetness').value.trim(),
+                },
+                sweetness_map: {
+                    'หวานน้อย':  parseInt(document.getElementById('sweet_low').value),
+                    'หวานปกติ': parseInt(document.getElementById('sweet_mid').value),
+                    'หวานมาก':  parseInt(document.getElementById('sweet_high').value),
+                },
+                menus: menus,
+                payment: {
+                    promptpay_id:     document.getElementById('promptpay_id').value.trim(),
+                    slipok_branch_id: document.getElementById('slipok_branch_id').value.trim(),
+                    slipok_api_key:   document.getElementById('slipok_api_key').value.trim(),
+                },
+            };
+        }
+
+        // บันทึกเมนูทันทีเมื่อเพิ่ม/แก้ไข/ลบ/แก้ช่องปั๊ม-ราคา — ไม่ต้องรอกดปุ่มบันทึกหลัก
+        function persistMenus(successMsg) {
+            const status = document.getElementById('menuSaveStatus');
+            status.className = '';
+            status.textContent = '⏳ กำลังบันทึก...';
+
+            fetch('/api/config', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(buildConfigPayload()),
+            })
+                .then(r => r.json())
+                .then(data => {
+                    if (data.status === 'ok') {
+                        status.className = 'ok';
+                        status.textContent = '✅ ' + successMsg;
+                    } else {
+                        status.className = 'err';
+                        status.textContent = '❌ บันทึกไม่สำเร็จ: ' + data.message;
+                    }
+                })
+                .catch(err => {
+                    status.className = 'err';
+                    status.textContent = '❌ บันทึกไม่สำเร็จ: ' + err;
+                });
+        }
+
+        function saveConfig() {
+            const result = document.getElementById('saveResult');
+            result.className = '';
+            result.textContent = '⏳ กำลังบันทึก...';
+
+            fetch('/api/config', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(buildConfigPayload()),
+            })
+                .then(r => r.json())
+                .then(data => {
+                    if (data.status === 'ok') {
+                        result.className = 'ok';
+                        result.textContent = '✅ บันทึกแล้ว — การตั้งค่ามีผลทันที';
+                    } else {
+                        result.className = 'err';
+                        result.textContent = '❌ เกิดข้อผิดพลาด: ' + data.message;
+                    }
+                })
+                .catch(err => {
+                    result.className = 'err';
+                    result.textContent = '❌ บันทึกไม่สำเร็จ: ' + err;
+                });
+        }
+    </script>
+
+</body>
+</html>

@@ -1,0 +1,67 @@
+{
+  "mqtt": {
+    "broker": "broker.hivemq.com",
+    "port": 1883,
+    "username": "",
+    "password": ""
+  },
+  "topics": {
+    "order": "watereiei/orderstester",
+    "machine": "watereiei/machine/dispense",
+    "drink": "watereiei/machine/drink_selected",
+    "sweetness": "watereiei/machine/sweetness_selected",
+    "reset": "watereiei/machine/reset"
+  },
+  "sweetness_map": {
+    "หวานน้อย": 50,
+    "หวานปกติ": 100,
+    "หวานมาก": 150
+  },
+  "menus": [
+    {
+      "name": "Blue Syrup",
+      "icon": "🔵",
+      "color": "#007bff",
+      "pump_channel": 1,
+      "price": 45,
+      "keywords": [
+        "blue",
+        "น้ำเงิน",
+        "ฟ้า",
+        "บลู"
+      ],
+      "locked": true
+    },
+    {
+      "name": "Red Syrup",
+      "icon": "🔴",
+      "color": "#b52b2b",
+      "pump_channel": 2,
+      "price": 45,
+      "keywords": [
+        "red",
+        "แดง",
+        "เรด"
+      ],
+      "locked": true
+    },
+    {
+      "name": "Green Syrup",
+      "icon": "🟢",
+      "color": "#28a745",
+      "pump_channel": 3,
+      "price": 45,
+      "keywords": [
+        "green",
+        "เขียว",
+        "กรีน"
+      ],
+      "locked": true
+    }
+  ],
+  "payment": {
+    "promptpay_id": "",
+    "slipok_api_key": "",
+    "slipok_branch_id": ""
+  }
+}

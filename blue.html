@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Blue Syrup Page</title>
+    <style>
+        body { background-color: #d2b48c; font-family: sans-serif; display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0; }
+        .card { background: white; padding: 30px; border-radius: 20px; text-align: center; border: 3px solid #8b4513; box-shadow: 0 4px 15px rgba(0,0,0,0.2); width: 320px; }
+        .sweetness-options { display: flex; flex-direction: column; gap: 10px; margin: 20px 0; }
+        .option { padding: 12px; border: 2px solid #ddd; border-radius: 10px; cursor: pointer; transition: 0.2s; font-weight: bold; }
+        .option:hover { background-color: #f0f7ff; }
+        .option.selected { border-color: #007bff; background-color: #e6f2ff; color: #007bff; }
+        .btn-group { display: flex; flex-direction: column; gap: 10px; }
+        .pay-btn { padding: 15px; background-color: #ccc; color: white; text-decoration: none; border-radius: 10px; font-weight: bold; pointer-events: none; transition: 0.3s; border: none; display: block; cursor: pointer; text-align: center; }
+        .pay-btn.active { background-color: #28a745; pointer-events: auto; box-shadow: 0 4px 10px rgba(40,167,69,0.3); }
+        .back-btn { color: #8b4513; text-decoration: none; font-size: 14px; margin-top: 5px; display: block; }
+        #voice-indicator { position: fixed; top: 0; left: 0; width: 100%; background: rgba(255,255,255,0.92); text-align: center; padding: 6px; font-size: 14px; color: #8b4513; font-weight: bold; display: none; z-index: 999; box-shadow: 0 2px 6px rgba(0,0,0,0.1); }
+        .modal-backdrop { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 9999; justify-content: center; align-items: center; }
+        .modal-box { background: white; padding: 30px; border-radius: 20px; text-align: center; width: 285px; box-shadow: 0 10px 25px rgba(0,0,0,0.5); }
+        .modal-btn { padding: 12px 22px; color: white; border: none; border-radius: 10px; font-weight: bold; cursor: pointer; font-size: 15px; }
+    </style>
+</head>
+<body>
+<div id="voice-indicator"></div>
+
+<div class="card">
+    <h1 style="font-size:60px; margin:0;">🔵</h1>
+    <h2 style="color:#007bff;">Blue Syrup</h2>
+    <p>เลือกระดับความหวานเพื่อไปต่อ</p>
+    <div class="sweetness-options">
+        <div class="option" onclick="selectSweetness(this,'หวานน้อย')">หวานน้อย &nbsp;<small style="color:#aaa;font-weight:normal;">(Less Sweet)</small></div>
+        <div class="option" onclick="selectSweetness(this,'หวานปกติ')">หวานปกติ &nbsp;<small style="color:#aaa;font-weight:normal;">(Normal)</small></div>
+        <div class="option" onclick="selectSweetness(this,'หวานมาก')">หวานมาก &nbsp;<small style="color:#aaa;font-weight:normal;">(Extra Sweet)</small></div>
+    </div>
+    <div class="btn-group">
+        <a href="#" id="payButton" class="pay-btn" onclick="event.preventDefault(); confirmOrder()">ไปหน้าจ่ายเงิน</a>
+        <a href="#" class="back-btn" onclick="cancelOrder()">← กลับสู่หน้าหลัก</a>
+    </div>
+</div>
+
+<!-- Modal: ยังไม่เลือกความหวาน -->
+<div id="voiceAlert" class="modal-backdrop">
+    <div class="modal-box" style="border:3px solid #8b4513;">
+        <h3 style="color:#b52b2b; margin-top:0;">⚠️ คำแนะนำ</h3>
+        <p>กรุณาเลือกความหวานก่อนครับ</p>
+        <button class="modal-btn" onclick="closeAlert()" style="background:#8b4513;">ตกลง (OK)</button>
+        <p style="font-size:12px; color:#999; margin-top:12px;">(พูดว่า <b>"โอเค / ok"</b> เพื่อปิด)</p>
+    </div>
+</div>
+
+<!-- Modal: ยืนยันออเดอร์ (Feature 6) -->
+<div id="confirmModal" class="modal-backdrop">
+    <div class="modal-box" style="border:3px solid #007bff;">
+        <h3 style="color:#007bff; margin-top:0;">🛒 ยืนยันออเดอร์?</h3>
+        <p id="confirmText" style="font-size:18px; font-weight:bold; color:#333; margin:10px 0;"></p>
+        <p id="priceDisplay" style="color:#b52b2b; font-size:28px; font-weight:bold; margin:5px 0;">฿ 45.00</p>
+        <div style="display:flex; gap:10px; justify-content:center; margin-top:15px;">
+            <button class="modal-btn" onclick="proceedToPayment()" style="background:#28a745;">✓ ยืนยัน</button>
+            <button class="modal-btn" onclick="closeConfirm()" style="background:#888;">✗ ยกเลิก</button>
+        </div>
+        <p style="font-size:12px; color:#999; margin-top:12px;">(พูดว่า <b>"ใช่ / yes"</b> หรือ <b>"ไม่ / no"</b>)</p>
+    </div>
+</div>
+
+<script>
+// ─── TTS (Feature 2) ──────────────────────────────────────────────────────────
+let isSpeaking = false;
+let recognitionRef = null;
+
+function aiSpeak(msg) {
+    if (!window.speechSynthesis) return;
+    window.speechSynthesis.cancel();
+
+    // ไม่ abort() ไมค์ — ปล่อยให้ recognition ฟังต่อเนื่อง (ไม่ต้อง restart ให้หน่วง)
+    // แค่กรองผลลัพธ์ทิ้งระหว่างพูดด้วย isSpeaking เพื่อกันเสียงจากลำโพงวิ่งกลับเข้าไมค์ (echo)
+    isSpeaking = true;
+
+    const u = new SpeechSynthesisUtterance(msg);
+    u.lang = 'th-TH'; u.rate = 1.0; u.volume = 1;
+    u.onend = () => {
+        // รอสั้นๆ ให้ echo หางเสียงสลายก่อน ค่อยเริ่มรับฟังคำตอบจริง
+        setTimeout(() => { isSpeaking = false; }, 200);
+    };
+    window.speechSynthesis.speak(u);
+}
+
+// ─── Price (fetched from admin config) ───────────────────────────────────────
+let currentPrice = 45;
+fetch('/api/menus')
+    .then(r => r.json())
+    .then(menus => {
+        const entry = menus.find(m => m.name === 'Blue Syrup');
+        currentPrice = entry ? entry.price : 45;
+        document.getElementById('priceDisplay').textContent = `฿ ${Number(currentPrice).toFixed(2)}`;
+    })
+    .catch(err => console.error('โหลดราคาไม่สำเร็จ:', err));
+
+// ─── Order Confirmation (Feature 6) ──────────────────────────────────────────
+let navigating = false;
+
+function confirmOrder() {
+    const sweet = localStorage.getItem('selectedSweetness');
+    if (!sweet) { document.getElementById('voiceAlert').style.display = 'flex'; return; }
+    document.getElementById('confirmText').textContent = 'Blue Syrup — ' + sweet;
+    document.getElementById('confirmModal').style.display = 'flex';
+    aiSpeak('คุณเลือก บลู ซีรัป ' + sweet + ' ราคา ' + currentPrice + ' บาท ยืนยันหรือไม่?');
+}
+function closeConfirm() {
+    document.getElementById('confirmModal').style.display = 'none';
+    window.speechSynthesis.cancel();
+}
+function proceedToPayment() {
+    if (navigating) return;
+    navigating = true;
+    closeConfirm();
+    window.location.href = 'payment.html';
+}
+function closeAlert() { document.getElementById('voiceAlert').style.display = 'none'; }
+
+// ─── Utility ──────────────────────────────────────────────────────────────────
+function cancelOrder() {
+    aiSpeak('ยกเลิกออเดอร์แล้วครับ');
+    fetch('/api/reset', { method: 'POST' }).finally(() => {
+        setTimeout(() => { window.location.href = 'index.html'; }, 1500); // เผื่อเวลาให้พูดจบก่อนเปลี่ยนหน้า
+    });
+}
+function mqttNotify(endpoint, body) {
+    fetch(endpoint, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
+        .catch(err => console.error(endpoint, err));
+}
+
+window.addEventListener('load', () => {
+    mqttNotify('/api/select-drink', { menu: 'Blue Syrup', timestamp: new Date().toLocaleString('th-TH') });
+});
+
+// ─── Sweetness Selection ──────────────────────────────────────────────────────
+function selectSweetness(element, level) {
+    document.querySelectorAll('.option').forEach(o => o.classList.remove('selected'));
+    element.classList.add('selected');
+    document.getElementById('payButton').classList.add('active');
+    localStorage.setItem('selectedMenu', 'Blue Syrup');
+    localStorage.setItem('selectedSweetness', level);
+    mqttNotify('/api/select-sweetness', { sweetness: level, timestamp: new Date().toLocaleString('th-TH') });
+    aiSpeak('เลือก' + level + 'แล้ว');
+}
+
+// ─── AI Voice Assistant ───────────────────────────────────────────────────────
+const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+if (SpeechRecognition) {
+    const recognition = new SpeechRecognition();
+    recognitionRef = recognition; // ให้ aiSpeak() เข้าถึงได้
+    recognition.lang = 'th-TH';
+    recognition.continuous = true;
+    recognition.interimResults = true;
+    recognition.maxAlternatives = 3;
+
+    const voiceIndicator = document.getElementById('voice-indicator');
+    let lastActed = 0;
+
+    recognition.onstart = () => {
+        voiceIndicator.style.display = 'block';
+        voiceIndicator.innerHTML = '🎙️ AI พร้อมรับคำสั่งเสียงแล้ว...';
+    };
+
+    recognition.onresult = (event) => {
+        if (isSpeaking) return; // ไม่รับเสียงขณะ TTS กำลังพูด (ป้องกัน echo)
+        const now = Date.now();
+        let transcript = '';
+        let isFinal = false;
+        for (let i = event.resultIndex; i < event.results.length; i++) {
+            transcript += event.results[i][0].transcript;
+            if (event.results[i].isFinal) isFinal = true;
+        }
+        // รอผลลัพธ์สุดท้ายก่อนค่อยประมวลผล — ผลลัพธ์ระหว่างพูด (interim) จะยิง event ซ้ำหลายรอบ
+        // สำหรับคำพูดเดียวกัน ถ้าไม่กรองตรงนี้จะทำให้สั่งงาน/พูดตอบซ้ำหลายครั้ง
+        if (!isFinal) return;
+        transcript = transcript.toLowerCase().trim();
+        if (!transcript) return;
+        console.log('AI ได้ยิน:', transcript);
+        voiceIndicator.style.display = 'block';
+        voiceIndicator.innerHTML = '🎙️ ได้ยิน: "' + transcript + '"';
+
+        const options  = document.querySelectorAll('.option');
+        const payBtn   = document.getElementById('payButton');
+        const cfmModal = document.getElementById('confirmModal');
+        const alert_   = document.getElementById('voiceAlert');
+
+        // 0. ตอบสนองใน confirmModal (Feature 6)
+        if (cfmModal.style.display === 'flex') {
+            if (['ใช่','yes','ยืนยัน','confirm','ไปต่อ','ต่อ','เยส','คอนเฟิร์ม','โอเค','ok'].some(w => transcript.includes(w))) { proceedToPayment(); return; }
+            if (['ไม่','no','ยกเลิก','cancel','กลับ','back','โน','แคนเซิล','แบ็ค'].some(w => transcript.includes(w)))           { closeConfirm();     return; }
+            return;
+        }
+
+        // 1. ปิด voiceAlert
+        if (alert_.style.display === 'flex') {
+            if (['ตกลง','โอเค','ok','ปิด','close'].some(w => transcript.includes(w))) { closeAlert(); return; }
+        }
+
+        // 2. เลือกความหวาน — Feature 7: English keywords
+        if (now - lastActed >= 1500) {
+            const less   = ['หวานน้อย','น้อย','ไม่หวาน','ไม่ค่อยหวาน','นิดหน่อย','นิดเดียว','เบาๆ','อ่อนๆ','ลดหวาน','ไม่ค่อย','less sweet','less','light','low sugar','no sugar','เลส สวีท','เลส','ไลท์','โล','โน ชูการ์'];
+            const normal = ['หวานปกติ','ปกติ','ปานกลาง','ธรรมดา','กลางๆ','พอดี','มาตรฐาน','พอดีๆ','เท่ากัน','normal','medium','regular','standard','นอร์มัล','มีเดียม','เรกูลาร์','สแตนดาร์ด'];
+            const more   = ['หวานมาก','มาก','เยอะ','หวานเยอะ','หวานจัด','จัดเต็ม','จัด','ข้น','หวานๆ','เต็ม','สุดๆ','extra sweet','extra','very sweet','more sweet','full sugar','เอ็กซ์ตร้า สวีท','เอ็กซ์ตร้า','เวรี่ สวีท','มอร์ สวีท','ฟูล ชูการ์'];
+
+            if (less.some(w => transcript.includes(w))) {
+                lastActed = now; selectSweetness(options[0], 'หวานน้อย');
+                voiceIndicator.innerHTML = '✅ เลือก: หวานน้อย';
+            } else if (normal.some(w => transcript.includes(w))) {
+                lastActed = now; selectSweetness(options[1], 'หวานปกติ');
+                voiceIndicator.innerHTML = '✅ เลือก: หวานปกติ';
+            } else if (more.some(w => transcript.includes(w))) {
+                lastActed = now; selectSweetness(options[2], 'หวานมาก');
+                voiceIndicator.innerHTML = '✅ เลือก: หวานมาก';
+            }
+        }
+
+        // 3. ยืนยันออเดอร์ผ่าน confirmModal (Feature 6)
+        if (['จ่ายเงิน','ตกลง','โอเค','ไปต่อ','ต่อไป','ยืนยัน','ok','confirm','yes','ใช่','next','คอนเฟิร์ม','เยส','เน็กซ์'].some(w => transcript.includes(w))) {
+            if (payBtn.classList.contains('active')) {
+                voiceIndicator.innerHTML = '✅ กำลังยืนยัน...';
+                confirmOrder();
+            } else if (now - lastActed >= 1500) {
+                lastActed = now; alert_.style.display = 'flex';
+            }
+        }
+
+        // 4. กลับ — Feature 7: English keywords
+        if (now - lastActed >= 1500 && ['กลับ','เมนู','หน้าแรก','ยกเลิก','cancel','ไม่เอา','back','home','menu','แคนเซิล','แบ็ค','โฮม'].some(w => transcript.includes(w))) {
+            lastActed = now;
+            voiceIndicator.innerHTML = '✅ กำลังกลับ...';
+            cancelOrder();
+        }
+    };
+
+    recognition.onerror = (e) => { if (e.error !== 'aborted' && !isSpeaking) setTimeout(() => recognition.start(), 300); };
+    recognition.onend = () => { if (!isSpeaking) recognition.start(); };
+    recognition.start();
+}
+</script>
+</body>
+</html>

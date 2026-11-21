@@ -1,0 +1,13 @@
+__pycache__/
+*.py[cod]
+.env
+.env.*
+config.json
+orders.db
+*.db
+*.sqlite3
+*.log
+.venv/
+venv/
+node_modules/
+.DS_Store
