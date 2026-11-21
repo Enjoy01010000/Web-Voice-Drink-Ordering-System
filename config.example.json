@@ -1,7 +1,7 @@
 {
   "mqtt": {
     "broker": "broker.hivemq.com",
-    "port": ****,
+    "port": 1883,
     "username": "",
     "password": ""
   },
